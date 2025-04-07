@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MX-UI 管理面板</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.10/lib/theme-chalk/index.css">
     <style>
         body {
             font-family: 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -11,6 +12,9 @@
             padding: 0;
             background-color: #f5f5f5;
             color: #333;
+        }
+        [v-cloak] {
+            display: none;
         }
         .container {
             max-width: 1200px;
@@ -38,14 +42,9 @@
         .user-info {
             margin-right: 20px;
         }
-        .sidebar {
-            width: 200px;
-            background-color: white;
-            border-radius: 5px;
-            padding: 15px;
-            margin-right: 20px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
+        .content-wrapper {
+            display: flex;
+            margin-top: 20px;
         }
         .main-content {
             flex-grow: 1;
@@ -54,297 +53,332 @@
             padding: 20px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
-        .content-wrapper {
-            display: flex;
-            margin-top: 20px;
-        }
-        .nav-item {
-            margin: 10px 0;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        .nav-item:hover, .nav-item.active {
-            background-color: #e3f2fd;
-            color: #1565c0;
-        }
-        .nav-item i {
-            margin-right: 10px;
-        }
-        .status-card {
-            background-color: #4caf50;
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
         .card {
-            background-color: white;
-            border-radius: 5px;
-            padding: 15px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-        .card-title {
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            color: #1565c0;
+        .dashboard-item {
+            text-align: center;
+            padding: 20px;
         }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
+        .dashboard-value {
+            font-size: 24px;
             font-weight: bold;
+            margin: 10px 0;
         }
-        .form-control {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
+        .dashboard-label {
+            color: #666;
         }
-        .btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
+        .status-running {
+            color: #67C23A;
         }
-        .btn-primary {
-            background-color: #1e88e5;
-            color: white;
+        .status-stop {
+            color: #E6A23C;
         }
-        .btn-danger {
-            background-color: #e53935;
-            color: white;
-        }
-        .inbound-list {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        .inbound-list th, .inbound-list td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        .inbound-list tr:hover {
-            background-color: #f5f5f5;
-        }
-        .logout-btn {
-            background-color: transparent;
-            border: 1px solid white;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #add-inbound {
-            margin-bottom: 15px;
-        }
-        #tab-content > div {
-            display: none;
-        }
-        #tab-content > div.active {
-            display: block;
+        .status-error {
+            color: #F56C6C;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>MX-UI 管理面板</h1>
-            <div class="header-right">
-                <div class="user-info">
-                    欢迎 <span id="username">管理员</span>
+    <div id="app" v-cloak>
+        <el-container>
+            <el-aside width="200px">
+                <el-menu
+                    default-active="system"
+                    class="el-menu-vertical"
+                    :router="true"
+                    background-color="#545c64"
+                    text-color="#fff"
+                    active-text-color="#ffd04b">
+                    <el-menu-item index="inbounds">
+                        <i class="el-icon-connection"></i>
+                        <span>入站管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="clients">
+                        <i class="el-icon-user"></i>
+                        <span>客户端管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="system">
+                        <i class="el-icon-monitor"></i>
+                        <span>系统状态</span>
+                    </el-menu-item>
+                    <el-menu-item index="settings">
+                        <i class="el-icon-setting"></i>
+                        <span>面板设置</span>
+                    </el-menu-item>
+                </el-menu>
+                <div class="user-panel" style="padding: 20px; color: white; text-align: center;">
+                    <div>用户: {{ username }}</div>
+                    <el-button type="text" @click="logout" style="color: #E6A23C; margin-top: 10px;">退出登录</el-button>
                 </div>
-                <button class="logout-btn" id="logout-btn">退出登录</button>
-            </div>
-        </div>
-        
-        <div class="content-wrapper">
-            <div class="sidebar">
-                <div class="nav-item active" data-tab="inbounds">
-                    <i>📊</i> 入站管理
-                </div>
-                <div class="nav-item" data-tab="clients">
-                    <i>👥</i> 客户端管理
-                </div>
-                <div class="nav-item" data-tab="settings">
-                    <i>⚙️</i> 面板设置
-                </div>
-                <div class="nav-item" data-tab="system">
-                    <i>💻</i> 系统状态
-                </div>
-                <div class="nav-item" data-tab="xray">
-                    <i>🚀</i> Xray 管理
-                </div>
-            </div>
+            </el-aside>
             
-            <div class="main-content">
-                <div id="tab-content">
-                    <!-- 入站管理 -->
-                    <div class="tab-pane active" id="inbounds">
-                        <h2 class="card-title">入站管理</h2>
-                        <button id="add-inbound" class="btn btn-primary">添加入站</button>
-                        <table class="inbound-list">
-                            <thead>
-                                <tr>
-                                    <th>备注</th>
-                                    <th>协议</th>
-                                    <th>端口</th>
-                                    <th>状态</th>
-                                    <th>流量</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>示例入站</td>
-                                    <td>VMess</td>
-                                    <td>10086</td>
-                                    <td>运行中</td>
-                                    <td>0.00 GB</td>
-                                    <td>
-                                        <button class="btn btn-primary">编辑</button>
-                                        <button class="btn btn-danger">删除</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- 客户端管理 -->
-                    <div class="tab-pane" id="clients">
-                        <h2 class="card-title">客户端管理</h2>
-                        <p>此处将显示客户端管理界面</p>
-                    </div>
-                    
-                    <!-- 面板设置 -->
-                    <div class="tab-pane" id="settings">
-                        <h2 class="card-title">面板设置</h2>
-                        <div class="card">
-                            <h3>用户设置</h3>
-                            <div class="form-group">
-                                <label for="username-input">用户名</label>
-                                <input type="text" id="username-input" class="form-control" value="admin">
-                            </div>
-                            <div class="form-group">
-                                <label for="password-input">密码</label>
-                                <input type="password" id="password-input" class="form-control" value="******">
-                            </div>
-                            <button class="btn btn-primary">保存设置</button>
-                        </div>
+            <el-container>
+                <el-header style="background-color: #1e88e5; color: white; line-height: 60px;">
+                    <h2>MX-UI 管理面板</h2>
+                </el-header>
+                
+                <el-main>
+                    <!-- 系统状态页面 -->
+                    <div v-if="currentPage === 'system'">
+                        <h2>系统状态</h2>
                         
-                        <div class="card">
-                            <h3>面板设置</h3>
-                            <div class="form-group">
-                                <label for="port-input">面板端口</label>
-                                <input type="number" id="port-input" class="form-control" value="54321">
-                            </div>
-                            <div class="form-group">
-                                <label for="base-path">基础路径</label>
-                                <input type="text" id="base-path" class="form-control" value="/">
-                            </div>
-                            <button class="btn btn-primary">保存设置</button>
-                        </div>
-                    </div>
-                    
-                    <!-- 系统状态 -->
-                    <div class="tab-pane" id="system">
-                        <h2 class="card-title">系统状态</h2>
-                        <div class="status-card">
-                            <h3>服务状态: 正常运行中</h3>
-                            <p>上线时间: 3 天 2 小时 15 分钟</p>
-                        </div>
+                        <!-- 系统资源监控 -->
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-card class="card">
+                                    <div slot="header">
+                                        <span>处理器</span>
+                                    </div>
+                                    <el-progress type="dashboard" :percentage="Math.round(status.cpu)" :color="cpuColor"></el-progress>
+                                    <div class="dashboard-label">CPU 使用率</div>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-card class="card">
+                                    <div slot="header">
+                                        <span>内存</span>
+                                    </div>
+                                    <el-progress type="dashboard" :percentage="memPercent" :color="memColor"></el-progress>
+                                    <div class="dashboard-label">{{ formatSize(status.mem.current) }} / {{ formatSize(status.mem.total) }}</div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
                         
-                        <div class="card">
-                            <h3>系统资源</h3>
-                            <p>CPU 使用率: 5%</p>
-                            <p>内存使用率: 25%</p>
-                            <p>磁盘使用率: 30%</p>
-                        </div>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-card class="card">
+                                    <div slot="header">
+                                        <span>交换分区</span>
+                                    </div>
+                                    <el-progress type="dashboard" :percentage="swapPercent" :color="swapColor"></el-progress>
+                                    <div class="dashboard-label">{{ formatSize(status.swap.current) }} / {{ formatSize(status.swap.total) }}</div>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-card class="card">
+                                    <div slot="header">
+                                        <span>磁盘空间</span>
+                                    </div>
+                                    <el-progress type="dashboard" :percentage="diskPercent" :color="diskColor"></el-progress>
+                                    <div class="dashboard-label">{{ formatSize(status.disk.current) }} / {{ formatSize(status.disk.total) }}</div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
                         
-                        <div class="card">
-                            <h3>网络状态</h3>
-                            <p>入站流量: 1.25 GB</p>
-                            <p>出站流量: 5.67 GB</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Xray 管理 -->
-                    <div class="tab-pane" id="xray">
-                        <h2 class="card-title">Xray 管理</h2>
-                        <div class="card">
-                            <h3>Xray 控制</h3>
-                            <button class="btn btn-primary">重启 Xray</button>
-                            <button class="btn btn-danger">停止 Xray</button>
-                            <button class="btn btn-primary">启动 Xray</button>
-                        </div>
+                        <!-- 系统信息 -->
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-card class="card">
+                                    <div class="dashboard-item">
+                                        <div class="dashboard-label">Xray 状态</div>
+                                        <div :class="'dashboard-value ' + xrayStatusClass">{{ xrayStatusText }}</div>
+                                        <div v-if="status.xray.version">版本: {{ status.xray.version }}</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-card class="card">
+                                    <div class="dashboard-item">
+                                        <div class="dashboard-label">运行时间</div>
+                                        <div class="dashboard-value">{{ formatUptime }}</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-card class="card">
+                                    <div class="dashboard-item">
+                                        <div class="dashboard-label">系统负载</div>
+                                        <div class="dashboard-value">{{ formatLoads }}</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
                         
-                        <div class="card">
-                            <h3>Xray 配置</h3>
-                            <div class="form-group">
-                                <label for="xray-config">配置模板</label>
-                                <textarea id="xray-config" class="form-control" rows="10">
-{
-    "log": {
-        "loglevel": "warning",
-        "access": "./access.log",
-        "error": "./error.log"
-    },
-    "inbounds": [],
-    "outbounds": [
-        {
-            "protocol": "freedom"
-        }
-    ]
-}</textarea>
-                            </div>
-                            <button class="btn btn-primary">应用配置</button>
-                        </div>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-card class="card">
+                                    <div class="dashboard-item">
+                                        <div class="dashboard-label">网络连接数</div>
+                                        <div class="dashboard-value">TCP: {{ status.tcpCount }} / UDP: {{ status.udpCount }}</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-card class="card">
+                                    <div class="dashboard-item">
+                                        <div class="dashboard-label">网络 I/O</div>
+                                        <div class="dashboard-value">
+                                            <i class="el-icon-upload2"></i> {{ formatSize(status.netIO.up) }}/s 
+                                            <i class="el-icon-download"></i> {{ formatSize(status.netIO.down) }}/s
+                                        </div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
                     </div>
-                </div>
-            </div>
-        </div>
+                </el-main>
+            </el-container>
+        </el-container>
     </div>
-    
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.10/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 标签页切换
-            const navItems = document.querySelectorAll('.nav-item');
-            const tabPanes = document.querySelectorAll('.tab-pane');
-            
-            navItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    // 移除所有活动类
-                    navItems.forEach(i => i.classList.remove('active'));
-                    tabPanes.forEach(p => p.classList.remove('active'));
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    currentPage: 'system',
+                    username: 'admin',
+                    status: {
+                        cpu: 0,
+                        mem: { current: 0, total: 0 },
+                        swap: { current: 0, total: 0 },
+                        disk: { current: 0, total: 0 },
+                        xray: { state: 'stop', errorMsg: '', version: '' },
+                        uptime: 0,
+                        loads: [0, 0, 0],
+                        tcpCount: 0,
+                        udpCount: 0,
+                        netIO: { up: 0, down: 0 },
+                        netTraffic: { sent: 0, recv: 0 }
+                    },
+                    statusTimer: null
+                };
+            },
+            computed: {
+                memPercent() {
+                    if (!this.status.mem.total) return 0;
+                    return Math.round((this.status.mem.current / this.status.mem.total) * 100);
+                },
+                swapPercent() {
+                    if (!this.status.swap.total) return 0;
+                    return Math.round((this.status.swap.current / this.status.swap.total) * 100);
+                },
+                diskPercent() {
+                    if (!this.status.disk.total) return 0;
+                    return Math.round((this.status.disk.current / this.status.disk.total) * 100);
+                },
+                cpuColor() {
+                    const percent = this.status.cpu;
+                    if (percent < 70) return '#67C23A';
+                    if (percent < 90) return '#E6A23C';
+                    return '#F56C6C';
+                },
+                memColor() {
+                    const percent = this.memPercent;
+                    if (percent < 70) return '#67C23A';
+                    if (percent < 90) return '#E6A23C';
+                    return '#F56C6C';
+                },
+                swapColor() {
+                    const percent = this.swapPercent;
+                    if (percent < 70) return '#67C23A';
+                    if (percent < 90) return '#E6A23C';
+                    return '#F56C6C';
+                },
+                diskColor() {
+                    const percent = this.diskPercent;
+                    if (percent < 70) return '#67C23A';
+                    if (percent < 90) return '#E6A23C';
+                    return '#F56C6C';
+                },
+                xrayStatusText() {
+                    switch (this.status.xray.state) {
+                        case 'running': return '运行中';
+                        case 'stop': return '已停止';
+                        case 'error': return '错误';
+                        default: return '未知';
+                    }
+                },
+                xrayStatusClass() {
+                    switch (this.status.xray.state) {
+                        case 'running': return 'status-running';
+                        case 'stop': return 'status-stop';
+                        case 'error': return 'status-error';
+                        default: return '';
+                    }
+                },
+                formatUptime() {
+                    const uptime = this.status.uptime;
+                    const days = Math.floor(uptime / 86400);
+                    const hours = Math.floor((uptime % 86400) / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
                     
-                    // 添加当前活动类
-                    this.classList.add('active');
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-            
-            // 登出事件
-            document.getElementById('logout-btn').addEventListener('click', function() {
-                if (confirm('确定要退出登录吗？')) {
-                    alert('您已退出登录');
-                    // 在实际应用中，这里应当调用API进行退出操作
-                    // window.location.href = '/login';
+                    let result = '';
+                    if (days > 0) result += `${days}天 `;
+                    if (hours > 0 || days > 0) result += `${hours}小时 `;
+                    result += `${minutes}分钟`;
+                    
+                    return result;
+                },
+                formatLoads() {
+                    return this.status.loads.map(load => load.toFixed(2)).join(' | ');
                 }
-            });
-            
-            // 添加入站事件
-            document.getElementById('add-inbound').addEventListener('click', function() {
-                alert('添加入站功能将在完整版本中实现');
-            });
+            },
+            methods: {
+                formatSize(bytes) {
+                    if (bytes === 0) return '0 B';
+                    
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    
+                    return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+                },
+                logout() {
+                    axios.post('/api/logout')
+                        .then(response => {
+                            if (response.data.success) {
+                                window.location.href = '/login';
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('退出登录失败: ' + error.message);
+                        });
+                },
+                fetchStatus() {
+                    axios.get('/api/server/status')
+                        .then(response => {
+                            if (response.data.success) {
+                                this.status = response.data.obj;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('获取状态失败:', error);
+                        });
+                },
+                startTimer() {
+                    this.fetchStatus();
+                    this.statusTimer = setInterval(this.fetchStatus, 2000);
+                },
+                stopTimer() {
+                    if (this.statusTimer) {
+                        clearInterval(this.statusTimer);
+                        this.statusTimer = null;
+                    }
+                }
+            },
+            mounted() {
+                // 获取用户信息
+                axios.get('/api/user')
+                    .then(response => {
+                        if (response.data.success) {
+                            this.username = response.data.data.username;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取用户信息失败:', error);
+                    });
+                
+                // 启动状态更新定时器
+                this.startTimer();
+            },
+            beforeDestroy() {
+                this.stopTimer();
+            }
         });
     </script>
 </body>

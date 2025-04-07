@@ -1,599 +1,591 @@
 #!/bin/bash
 
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-blue='\033[0;34m'
-plain='\033[0m'
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+PLAIN="\033[0m"
 
-# 当前脚本版本号
-current_version="1.0.0"
-
-# 检查系统
-check_system() {
-    if [[ -f /etc/redhat-release ]]; then
-        release="centos"
-    elif cat /etc/issue | grep -Eqi "debian"; then
-        release="debian"
-    elif cat /etc/issue | grep -Eqi "ubuntu"; then
-        release="ubuntu"
-    elif cat /etc/issue | grep -Eqi "centos|red hat|redhat"; then
-        release="centos"
-    elif cat /proc/version | grep -Eqi "debian"; then
-        release="debian"
-    elif cat /proc/version | grep -Eqi "ubuntu"; then
-        release="ubuntu"
-    elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
-        release="centos"
-    else
-        echo -e "${red}未检测到系统版本，请联系脚本作者！${plain}\n" && exit 1
+# 检查是否为Root用户
+check_root() {
+    if [ "$(id -u)" != "0" ]; then
+        echo -e "${RED}错误：必须使用root用户运行此脚本！${PLAIN}"
+        exit 1
     fi
-    echo "系统版本: ${release}"
 }
 
 # 检查系统架构
 check_arch() {
-    arch=$(arch)
+    arch=$(uname -m)
     if [[ $arch == "x86_64" || $arch == "x64" || $arch == "amd64" ]]; then
-        arch="amd64"
+        ARCH="amd64"
     elif [[ $arch == "aarch64" || $arch == "arm64" ]]; then
-        arch="arm64"
-    elif [[ $arch == "s390x" ]]; then
-        arch="s390x"
+        ARCH="arm64"
     else
-        echo -e "${red}检测架构失败 $arch ${plain}" && exit 1
+        echo -e "${RED}不支持的系统架构: ${arch}${PLAIN}"
+        exit 1
     fi
-    echo "系统架构: ${arch}"
+    echo -e "系统架构: ${ARCH}"
 }
 
-# 检查操作系统版本
-check_os_version() {
-    if [[ -f /etc/os-release ]]; then
-        os_version=$(awk -F'[= ."]' '/VERSION_ID/{print $3}' /etc/os-release)
+# 检查系统类型
+check_os() {
+    if [[ -f /etc/redhat-release ]]; then
+        OS="centos"
+    elif cat /etc/issue | grep -Eqi "debian"; then
+        OS="debian"
+    elif cat /etc/issue | grep -Eqi "ubuntu"; then
+        OS="ubuntu"
+    elif cat /etc/issue | grep -Eqi "centos|red hat|redhat"; then
+        OS="centos"
+    elif cat /proc/version | grep -Eqi "debian"; then
+        OS="debian"
+    elif cat /proc/version | grep -Eqi "ubuntu"; then
+        OS="ubuntu"
+    elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
+        OS="centos"
+    else
+        echo -e "${RED}未检测到系统版本，请联系脚本作者！${PLAIN}"
+        exit 1
     fi
-    if [[ -z "$os_version" && -f /etc/lsb-release ]]; then
-        os_version=$(awk -F'[= ."]+' '/DISTRIB_RELEASE/{print $2}' /etc/lsb-release)
-    fi
-
-    if [[ x"${release}" == x"centos" ]]; then
-        if [[ ${os_version} -le 6 ]]; then
-            echo -e "${red}请使用 CentOS 7 或更高版本的系统！${plain}\n" && exit 1
-        fi
-    elif [[ x"${release}" == x"ubuntu" ]]; then
-        if [[ ${os_version} -lt 16 ]]; then
-            echo -e "${red}请使用 Ubuntu 16 或更高版本的系统！${plain}\n" && exit 1
-        fi
-    elif [[ x"${release}" == x"debian" ]]; then
-        if [[ ${os_version} -lt 8 ]]; then
-            echo -e "${red}请使用 Debian 8 或更高版本的系统！${plain}\n" && exit 1
-        fi
-    fi
+    echo -e "系统版本: ${OS}"
 }
 
 # 安装依赖
-install_base() {
-    if [[ x"${release}" == x"centos" ]]; then
+install_dependencies() {
+    echo -e "${GREEN}安装依赖...${PLAIN}"
+    if [[ ${OS} == "centos" ]]; then
+        yum update -y
         yum install wget curl tar git -y
     else
-        apt-get update && apt-get install wget curl tar git -y
+        apt update -y
+        apt install wget curl tar git -y
     fi
 }
 
-# 安装Go环境
+# 检查并安装Go环境
 install_go() {
-    echo -e "${green}正在安装Go环境...${plain}"
-    
-    # 检查是否已安装Go
-    if command -v go &>/dev/null; then
-        echo -e "${green}Go已安装，跳过安装步骤${plain}"
-        return
-    fi
-    
-    # 下载并安装Go
-    if [[ $arch == "amd64" ]]; then
-        wget -O /tmp/go.tar.gz https://dl.google.com/go/go1.21.0.linux-amd64.tar.gz
-    elif [[ $arch == "arm64" ]]; then
-        wget -O /tmp/go.tar.gz https://dl.google.com/go/go1.21.0.linux-arm64.tar.gz
-    else
-        wget -O /tmp/go.tar.gz https://dl.google.com/go/go1.21.0.linux-amd64.tar.gz
-    fi
-    
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}下载Go失败，尝试使用备用链接${plain}"
-        if [[ $arch == "amd64" ]]; then
-            wget -O /tmp/go.tar.gz https://gomirrors.org/dl/go/go1.21.0.linux-amd64.tar.gz
-        elif [[ $arch == "arm64" ]]; then
-            wget -O /tmp/go.tar.gz https://gomirrors.org/dl/go/go1.21.0.linux-arm64.tar.gz
-        else
-            wget -O /tmp/go.tar.gz https://gomirrors.org/dl/go/go1.21.0.linux-amd64.tar.gz
-        fi
+    if command -v go >/dev/null 2>&1; then
+        GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+        echo -e "${GREEN}已安装Go版本: ${GO_VERSION}${PLAIN}"
         
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}下载Go失败，请手动安装Go环境后重试${plain}"
-            return 1
+        # 版本比较，确保版本 >= 1.19
+        MAJOR=$(echo $GO_VERSION | cut -d. -f1)
+        MINOR=$(echo $GO_VERSION | cut -d. -f2)
+        
+        if [ "$MAJOR" -gt 1 ] || ([ "$MAJOR" -eq 1 ] && [ "$MINOR" -ge 19 ]); then
+            echo -e "${GREEN}Go版本满足要求${PLAIN}"
+            return 0
+        else
+            echo -e "${YELLOW}已安装的Go版本过低，需要重新安装${PLAIN}"
         fi
     fi
+
+    echo -e "${GREEN}正在安装Go环境...${PLAIN}"
+    GO_VERSION="1.21.0"
+    wget -q -O /tmp/go.tar.gz https://dl.google.com/go/go${GO_VERSION}.linux-${ARCH}.tar.gz
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}下载Go失败，请检查网络连接${PLAIN}"
+        exit 1
+    fi
     
+    rm -rf /usr/local/go
     tar -C /usr/local -xzf /tmp/go.tar.gz
-    rm -f /tmp/go.tar.gz
     
-    # 配置环境变量
+    # 设置Go环境变量
     echo 'export PATH=$PATH:/usr/local/go/bin' > /etc/profile.d/go.sh
+    chmod +x /etc/profile.d/go.sh
     source /etc/profile.d/go.sh
-    export PATH=$PATH:/usr/local/go/bin
     
-    echo -e "${green}Go安装完成${plain}"
+    echo -e "${GREEN}Go安装完成${PLAIN}"
     go version
 }
 
-# 编译mx-ui
-compile_mx_ui() {
-    echo -e "${green}正在编译mx-ui...${plain}"
+# 下载预编译的mx-ui二进制文件
+download_mxui() {
+    echo -e "${GREEN}开始下载预编译的mx-ui版本${PLAIN}"
+    MX_UI_VERSION="v1.0.0"
+    MX_UI_FILE="mx-ui-linux-${ARCH}.tar.gz"
     
-    # 创建临时目录
-    TEMP_DIR=$(mktemp -d)
-    echo -e "${green}临时目录: ${TEMP_DIR}${plain}"
+    echo -e "从 https://github.com/MissChina/mx-ui/releases/download/${MX_UI_VERSION}/${MX_UI_FILE} 下载 mx-ui"
+    wget -O /usr/local/${MX_UI_FILE} https://github.com/MissChina/mx-ui/releases/download/${MX_UI_VERSION}/${MX_UI_FILE}
     
-    # 克隆完整源码
-    echo -e "${green}克隆源码...${plain}"
-    git clone https://github.com/MissChina/mx-ui.git ${TEMP_DIR}
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}克隆源码失败，尝试直接下载源码压缩包${plain}"
-        rm -rf ${TEMP_DIR}
-        TEMP_DIR=$(mktemp -d)
-        wget -O ${TEMP_DIR}/source.zip https://github.com/MissChina/mx-ui/archive/refs/heads/main.zip
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}下载源码失败${plain}"
-            return 1
-        fi
-        unzip -q ${TEMP_DIR}/source.zip -d ${TEMP_DIR}
-        mv ${TEMP_DIR}/mx-ui-main/* ${TEMP_DIR}/
-        rm -rf ${TEMP_DIR}/mx-ui-main
-        rm -f ${TEMP_DIR}/source.zip
-    fi
-    
-    # 进入临时目录编译
-    cd ${TEMP_DIR}
-    
-    # 下载依赖
-    echo -e "${green}下载依赖...${plain}"
-    export GO111MODULE=on
-    export GOPROXY=https://goproxy.cn,direct
-    
-    # 修复依赖下载问题
-    go mod tidy
-    if [[ $? -ne 0 ]]; then
-        echo -e "${yellow}自动修复依赖失败，尝试手动添加依赖${plain}"
-        # 手动安装主要依赖
-        go get -u github.com/op/go-logging
-        go get -u gorm.io/driver/sqlite
-        go get -u gorm.io/gorm
-        go get -u github.com/gin-gonic/gin
-        go get -u github.com/gin-contrib/sessions
-        go get -u github.com/gin-contrib/sessions/cookie
-    fi
-    
-    # 再次尝试修复依赖
-    go mod tidy
-    
-    # 编译
-    echo -e "${green}开始编译...${plain}"
-    go build -o mx-ui main.go
-    
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}编译mx-ui失败${plain}"
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}下载预编译版本失败，将尝试从源码编译${PLAIN}"
         return 1
     fi
     
-    # 复制编译好的二进制文件
-    cp mx-ui /usr/local/mx-ui/
-    chmod +x /usr/local/mx-ui/mx-ui
+    echo -e "${GREEN}下载成功，解压文件 /usr/local/${MX_UI_FILE}${PLAIN}"
+    mkdir -p /usr/local/mx-ui
+    tar -xzf /usr/local/${MX_UI_FILE} -C /usr/local/mx-ui
     
-    # 复制其他必要文件
-    cp -rf web /usr/local/mx-ui/
-    mkdir -p /usr/local/mx-ui/bin
-    
-    # 下载xray核心
-    echo -e "${green}下载xray核心...${plain}"
-    XRAY_VERSION="1.8.6"
-    if [[ $arch == "amd64" ]]; then
-        wget -O /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-64.zip
-    elif [[ $arch == "arm64" ]]; then
-        wget -O /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-arm64-v8a.zip
+    if [ -f /usr/local/mx-ui/mx-ui ]; then
+        chmod +x /usr/local/mx-ui/mx-ui
+        echo -e "${GREEN}mx-ui 预编译版本安装成功${PLAIN}"
+        return 0
     else
-        # 对于其他架构，使用amd64版本
-        wget -O /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-64.zip
+        echo -e "${YELLOW}未找到可执行文件或文件不可执行，尝试编译${PLAIN}"
+        return 1
     fi
-    
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}下载xray失败，创建占位符文件${plain}"
-        echo "#!/bin/bash" > /usr/local/mx-ui/bin/xray-linux-${arch}
-        echo "echo 'Xray core not found. Please install it manually.'" >> /usr/local/mx-ui/bin/xray-linux-${arch}
-        chmod +x /usr/local/mx-ui/bin/xray-linux-${arch}
-    else
-        unzip -q /tmp/xray.zip -d /tmp/xray
-        cp /tmp/xray/xray /usr/local/mx-ui/bin/xray-linux-${arch}
-        chmod +x /usr/local/mx-ui/bin/xray-linux-${arch}
-        rm -rf /tmp/xray
-        rm -f /tmp/xray.zip
-    fi
-    
-    # 清理临时目录
-    cd /usr/local
-    rm -rf ${TEMP_DIR}
-    
-    echo -e "${green}mx-ui编译完成${plain}"
-    ls -la /usr/local/mx-ui/
 }
 
-# 配置服务脚本
-setup_service() {
-    echo -e "${green}配置服务...${plain}"
+# 编译mx-ui
+compile_mxui() {
+    echo -e "${GREEN}正在编译mx-ui...${PLAIN}"
+    TMP_DIR=$(mktemp -d)
+    echo -e "临时目录: ${TMP_DIR}"
+    
+    echo -e "克隆源码..."
+    git clone https://github.com/MissChina/mx-ui.git ${TMP_DIR}
+    cd ${TMP_DIR}
+    
+    echo -e "修复数据库代码..."
+    # 修复database/db.go文件
+    cat > database/db.go << EOF
+package database
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"time"
+
+	"mx-ui/logger"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+var DB *gorm.DB
+
+// InitDB 初始化数据库
+func InitDB(dbPath string) error {
+	// 确保数据库所在目录存在
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+
+	// 配置GORM日志
+	gormLogger := &DBWriter{}
+
+	// 打开数据库
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: gormLogger,
+	})
+	if err != nil {
+		return err
+	}
+
+	// 获取连接池配置
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+
+	// 设置连接池参数
+	sqlDB.SetMaxOpenConns(1) // SQLite只支持单连接
+
+	DB = db
+
+	// 自动迁移数据库表结构
+	err = AutoMigrate()
+	if err != nil {
+		return err
+	}
+
+	// 初始化默认数据
+	InitData()
+
+	return nil
+}
+
+// DBWriter 实现GORM日志输出到自定义的日志系统
+type DBWriter struct{}
+
+// Printf 实现日志格式化输出
+func (w *DBWriter) Printf(format string, args ...interface{}) {
+	logger.Infof(format, args...)
+}
+
+// LogMode 实现gorm.Logger接口
+func (w *DBWriter) LogMode(level gorm.LogLevel) gorm.Logger {
+	return w
+}
+
+// Info 实现gorm.Logger接口
+func (w *DBWriter) Info(ctx context.Context, msg string, data ...interface{}) {
+	logger.Infof(msg, data...)
+}
+
+// Warn 实现gorm.Logger接口
+func (w *DBWriter) Warn(ctx context.Context, msg string, data ...interface{}) {
+	logger.Warningf(msg, data...)
+}
+
+// Error 实现gorm.Logger接口
+func (w *DBWriter) Error(ctx context.Context, msg string, data ...interface{}) {
+	logger.Errorf(msg, data...)
+}
+
+// Trace 实现gorm.Logger接口
+func (w *DBWriter) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+	elapsed := time.Since(begin)
+	sql, rows := fc()
+	if err != nil {
+		logger.Errorf("%s [%v], rows: %v, %s", sql, elapsed, rows, err.Error())
+		return
+	}
+	logger.Debugf("%s [%v], rows: %v", sql, elapsed, rows)
+}
+
+// AutoMigrate 自动迁移数据库表结构
+func AutoMigrate() error {
+	// 在此处添加所有需要迁移的模型
+	return DB.AutoMigrate(
+		&User{},
+		&Setting{},
+		&InboundConfig{},
+		&ClientConfig{},
+		&ServerStat{},
+	)
+}
+
+// InitData 初始化默认数据
+func InitData() {
+	InitUser()
+	InitSetting()
+}
+
+// User 用户模型
+type User struct {
+	gorm.Model
+	Username string
+	Password string
+}
+
+// Setting 设置模型
+type Setting struct {
+	gorm.Model
+	Key   string \`gorm:"unique"\`
+	Value string
+}
+
+// InboundConfig 入站配置模型
+type InboundConfig struct {
+	gorm.Model
+	Protocol       string
+	Tag            string
+	Port           int
+	Enable         bool
+	Settings       string
+	StreamSettings string
+	Remark         string
+}
+
+// ClientConfig 客户端配置模型
+type ClientConfig struct {
+	gorm.Model
+	InboundID  uint
+	Email      string
+	UUID       string
+	Enable     bool
+	ExpiryTime int64
+	Limit      int64
+	Used       int64
+	Remark     string
+}
+
+// ServerStat 服务器统计数据模型
+type ServerStat struct {
+	gorm.Model
+	Date       string  \`gorm:"uniqueIndex:idx_server_stat_date"\`
+	CPU        float64
+	Mem        float64
+	NetworkIn  int64
+	NetworkOut int64
+}
+
+// InitUser 初始化默认用户
+func InitUser() {
+	var count int64
+	DB.Model(&User{}).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	// 创建默认管理员账户
+	user := User{
+		Username: "admin",
+		Password: "admin",
+	}
+	DB.Create(&user)
+}
+
+// InitSetting 初始化默认设置
+func InitSetting() {
+	settings := []Setting{
+		{Key: "webPort", Value: "54321"},
+		{Key: "webBasePath", Value: "/"},
+		{Key: "xrayConfigTemplate", Value: GetDefaultXrayConfigTemplate()},
+	}
+
+	for _, setting := range settings {
+		DB.FirstOrCreate(&Setting{}, Setting{Key: setting.Key}).Update("Value", setting.Value)
+	}
+}
+
+// GetDefaultXrayConfigTemplate 获取默认的Xray配置模板
+func GetDefaultXrayConfigTemplate() string {
+	return \`{
+		"log": {
+			"loglevel": "warning",
+			"access": "./access.log",
+			"error": "./error.log"
+		},
+		"inbounds": [],
+		"outbounds": [
+			{
+				"protocol": "freedom"
+			}
+		],
+		"routing": {
+			"rules": [
+				{
+					"type": "field",
+					"ip": [
+						"geoip:private"
+					],
+					"outboundTag": "blocked"
+				}
+			]
+		}
+	}\`
+}
+EOF
+    
+    echo -e "下载依赖..."
+    GOPROXY=https://goproxy.io,direct
+    go mod tidy
+    
+    echo -e "开始编译..."
+    go build -o mx-ui main.go
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}编译失败${PLAIN}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}编译成功${PLAIN}"
+    
+    # 安装到系统
+    install_mxui
+    return $?
+}
+
+# 安装mx-ui
+install_mxui() {
+    echo -e "${GREEN}安装mx-ui到系统${PLAIN}"
+    
+    # 创建安装目录
+    mkdir -p /usr/local/mx-ui/bin
+    mkdir -p /usr/local/mx-ui/web
+    
+    # 复制文件
+    if [ -f "${TMP_DIR}/mx-ui" ]; then
+        cp ${TMP_DIR}/mx-ui /usr/local/mx-ui/bin/
+    elif [ -f "./mx-ui" ]; then
+        cp ./mx-ui /usr/local/mx-ui/bin/
+    else
+        echo -e "${RED}未找到mx-ui可执行文件${PLAIN}"
+        return 1
+    fi
+    
+    chmod +x /usr/local/mx-ui/bin/mx-ui
+    
+    # 复制Web页面和其他资源
+    if [ -d "${TMP_DIR}/web" ]; then
+        cp -r ${TMP_DIR}/web /usr/local/mx-ui/
+    elif [ -d "./web" ]; then
+        cp -r ./web /usr/local/mx-ui/
+    else
+        echo -e "${RED}未找到web目录${PLAIN}"
+        return 1
+    fi
+    
+    # 创建数据目录
+    mkdir -p /etc/mx-ui
+    mkdir -p /var/log/mx-ui
     
     # 创建服务文件
     cat > /etc/systemd/system/mx-ui.service << EOF
 [Unit]
-Description=mx-ui Service
+Description=MX-UI Service
 After=network.target
-Wants=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/usr/local/mx-ui/
-ExecStart=/usr/local/mx-ui/mx-ui
+WorkingDirectory=/usr/local/mx-ui/bin
+ExecStart=/usr/local/mx-ui/bin/mx-ui
 Restart=on-failure
-RestartSec=5s
+RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-    # 创建管理脚本
-    cat > /usr/local/mx-ui/mx-ui-script << EOF
-#!/bin/bash
-
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-plain='\033[0m'
-
-# 检查是否为root用户
-[[ \$EUID -ne 0 ]] && echo -e "\${red}错误: \${plain}必须使用root用户运行此脚本!\n" && exit 1
-
-# 系统架构检测
-arch=\$(arch)
-if [[ \$arch == "x86_64" || \$arch == "x64" || \$arch == "amd64" ]]; then
-    arch="amd64"
-elif [[ \$arch == "aarch64" || \$arch == "arm64" ]]; then
-    arch="arm64"
-elif [[ \$arch == "s390x" ]]; then
-    arch="s390x"
-else
-    arch="amd64"
-    echo -e "\${red}未检测到系统架构，使用默认架构: \${arch}\${plain}"
-fi
-
-# 显示菜单
-show_menu() {
-    echo -e "
-  \${green}mx-ui 管理脚本\${plain}
-  \${green}1.\${plain}  启动 mx-ui
-  \${green}2.\${plain}  停止 mx-ui
-  \${green}3.\${plain}  重启 mx-ui
-  \${green}4.\${plain}  查看 mx-ui 状态
-  \${green}5.\${plain}  查看 mx-ui 日志
-  \${green}6.\${plain}  设置 mx-ui 开机自启
-  \${green}7.\${plain}  取消 mx-ui 开机自启
-  \${green}8.\${plain}  升级 mx-ui
-  \${green}9.\${plain}  卸载 mx-ui
-  \${green}10.\${plain} 查看/修改面板设置
-  \${green}0.\${plain}  退出脚本
-  "
-    echo && read -p "请输入选择 [0-10]: " num
-
-    case "\${num}" in
-        0) exit 0 ;;
-        1) start_mx_ui ;;
-        2) stop_mx_ui ;;
-        3) restart_mx_ui ;;
-        4) check_mx_ui_status ;;
-        5) view_mx_ui_log ;;
-        6) enable_mx_ui ;;
-        7) disable_mx_ui ;;
-        8) update_mx_ui ;;
-        9) uninstall_mx_ui ;;
-        10) modify_mx_ui_settings ;;
-        *) echo -e "\${red}请输入正确的数字 [0-10]\${plain}" ;;
-    esac
-}
-
-# 启动mx-ui
-start_mx_ui() {
-    systemctl start mx-ui
-    sleep 2
-    check_mx_ui_status
-}
-
-# 停止mx-ui
-stop_mx_ui() {
-    systemctl stop mx-ui
-    sleep 2
-    check_mx_ui_status
-}
-
-# 重启mx-ui
-restart_mx_ui() {
-    systemctl restart mx-ui
-    sleep 2
-    check_mx_ui_status
-}
-
-# 查看mx-ui状态
-check_mx_ui_status() {
-    systemctl status mx-ui -l
-    if [[ \$? == 0 ]]; then
-        echo -e "mx-ui端口: \$(get_mx_ui_port)"
-    fi
-}
-
-# 查看mx-ui日志
-view_mx_ui_log() {
-    journalctl -u mx-ui -n 50 --no-pager
-}
-
-# 设置开机自启
-enable_mx_ui() {
-    systemctl enable mx-ui
-    if [[ \$? == 0 ]]; then
-        echo -e "\${green}设置mx-ui开机自启成功\${plain}"
-    else
-        echo -e "\${red}设置mx-ui开机自启失败\${plain}"
-    fi
-}
-
-# 取消开机自启
-disable_mx_ui() {
-    systemctl disable mx-ui
-    if [[ \$? == 0 ]]; then
-        echo -e "\${green}取消mx-ui开机自启成功\${plain}"
-    else
-        echo -e "\${red}取消mx-ui开机自启失败\${plain}"
-    fi
-}
-
-# 获取mx-ui端口
-get_mx_ui_port() {
-    /usr/local/mx-ui/mx-ui setting -show | grep "端口:" | awk '{print \$2}'
-}
-
-# 修改mx-ui设置
-modify_mx_ui_settings() {
-    echo -e "\${yellow}当前mx-ui设置:\${plain}"
-    /usr/local/mx-ui/mx-ui setting -show
-    
-    echo ""
-    echo -e "\${yellow}修改设置:\${plain}"
-    echo -e "\${green}1.\${plain} 修改用户名和密码"
-    echo -e "\${green}2.\${plain} 修改面板端口"
-    echo -e "\${green}0.\${plain} 返回主菜单"
-    
-    read -p "请选择 [0-2]: " setting_num
-    case \$setting_num in
-        1)
-            read -p "请输入新用户名: " new_username
-            read -p "请输入新密码: " new_password
-            /usr/local/mx-ui/mx-ui setting -username \$new_username -password \$new_password
-            echo -e "\${green}用户名和密码已更新\${plain}"
-            ;;
-        2)
-            read -p "请输入新端口: " new_port
-            /usr/local/mx-ui/mx-ui setting -port \$new_port
-            echo -e "\${green}端口已更新\${plain}"
-            ;;
-        0) show_menu ;;
-        *) echo -e "\${red}请输入正确的数字 [0-2]\${plain}" ;;
-    esac
-}
-
-# 升级mx-ui
-update_mx_ui() {
-    bash <(curl -Ls https://raw.githubusercontent.com/MissChina/mx-ui/main/install.sh)
-}
-
-# 卸载mx-ui
-uninstall_mx_ui() {
-    echo -e "\${yellow}确定要卸载mx-ui吗? (y/n)\${plain}"
-    read -p "": yn
-    if [[ \$yn =~ ^[Yy]\$ ]]; then
-        systemctl stop mx-ui
-        systemctl disable mx-ui
-        rm -rf /usr/local/mx-ui
-        rm -f /etc/systemd/system/mx-ui.service
-        rm -f /usr/bin/mx-ui
-        systemctl daemon-reload
-        echo -e "\${green}卸载成功\${plain}"
-    fi
-}
-
-if [[ \$# > 0 ]]; then
-    case \$1 in
-        start) start_mx_ui ;;
-        stop) stop_mx_ui ;;
-        restart) restart_mx_ui ;;
-        status) check_mx_ui_status ;;
-        log) view_mx_ui_log ;;
-        enable) enable_mx_ui ;;
-        disable) disable_mx_ui ;;
-        update) update_mx_ui ;;
-        install) bash <(curl -Ls https://raw.githubusercontent.com/MissChina/mx-ui/main/install.sh) ;;
-        uninstall) uninstall_mx_ui ;;
-        setting)
-            if [[ \$# == 2 && \$2 == "show" ]]; then
-                /usr/local/mx-ui/mx-ui setting -show
-            else
-                modify_mx_ui_settings
-            fi
-            ;;
-        *) show_menu ;;
-    esac
-else
-    show_menu
-fi
-EOF
-
-    chmod +x /usr/local/mx-ui/mx-ui-script
-    ln -sf /usr/local/mx-ui/mx-ui-script /usr/bin/mx-ui
-    
-    echo -e "${green}服务配置完成${plain}"
-}
-
-# 安装后配置
-config_after_install() {
-    echo -e "${yellow}出于安全考虑，安装/更新完成后需要设置面板端口、用户名和密码${plain}"
-    
-    # 随机生成用户名和密码
-    random_username=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 8 | head -n 1)
-    random_password=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 12 | head -n 1)
-    
-    read -p "是否设置自定义用户名和密码? (y/n, 默认: n): " config_confirm
-    if [[ x"${config_confirm}" == x"y" || x"${config_confirm}" == x"Y" ]]; then
-        read -p "请设置面板用户名 (默认: admin): " config_username
-        [[ -z "${config_username}" ]] && config_username="admin"
-        read -p "请设置面板密码 (默认: admin): " config_password
-        [[ -z "${config_password}" ]] && config_password="admin"
-    else
-        config_username=${random_username}
-        config_password=${random_password}
-        echo -e "${green}已设置随机用户名: ${config_username}，密码: ${config_password}${plain}"
-    fi
-
-    read -p "请设置面板访问端口 (默认: 54321): " config_port
-    [[ -z "${config_port}" ]] && config_port="54321"
-    
-    # 配置服务
-    if [[ -f "/usr/local/mx-ui/mx-ui" && -x "/usr/local/mx-ui/mx-ui" ]]; then
-        /usr/local/mx-ui/mx-ui setting -username ${config_username} -password ${config_password}
-        /usr/local/mx-ui/mx-ui setting -port ${config_port}
-        
-        # 显示设置信息
-        echo -e "\n${green}mx-ui 面板配置信息：${plain}"
-        echo -e "用户名: ${config_username}"
-        echo -e "密码: ${config_password}"
-        echo -e "面板访问端口: ${config_port}"
-    else
-        echo -e "${red}mx-ui 程序不存在或不可执行，配置失败${plain}"
-        # 创建配置文件目录
-        mkdir -p /usr/local/mx-ui/config
-        # 保存配置到临时文件，等待下次启动时使用
-        echo "{\"username\":\"${config_username}\",\"password\":\"${config_password}\",\"port\":${config_port}}" > /usr/local/mx-ui/config/settings.json
-        
-        echo -e "\n${yellow}mx-ui 面板临时配置信息（将在程序启动时应用）：${plain}"
-        echo -e "用户名: ${config_username}"
-        echo -e "密码: ${config_password}"
-        echo -e "面板访问端口: ${config_port}"
-    fi
-}
-
-# 安装mx-ui
-install_mx_ui() {
-    systemctl stop mx-ui 2>/dev/null
-    
-    mkdir -p /usr/local/mx-ui/
-    
-    local package_file=""
-    
-    if [ $# -gt 0 ]; then
-        last_version=$1
-        url="https://github.com/MissChina/mx-ui/releases/download/${last_version}/mx-ui-linux-${arch}.tar.gz"
-        echo -e "开始安装 mx-ui $1"
-        package_file="/usr/local/mx-ui-linux-${arch}-${last_version}.tar.gz"
-    else
-        echo -e "开始安装 mx-ui 最新版本"
-        url="https://github.com/MissChina/mx-ui/releases/download/v1.0.0/mx-ui-linux-${arch}.tar.gz"
-        last_version="v1.0.0"
-        package_file="/usr/local/mx-ui-linux-${arch}.tar.gz"
-    fi
-
-    echo -e "从 ${url} 下载 mx-ui"
-    wget -N --no-check-certificate -O ${package_file} ${url}
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}下载 mx-ui 失败，尝试使用备用下载方式${plain}"
-        curl -L -o ${package_file} ${url}
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}下载 mx-ui 失败，跳过解压步骤${plain}"
-            package_file=""
-        fi
-    fi
-
-    # 尝试解压文件
-    if [[ -n "${package_file}" && -f "${package_file}" ]]; then
-        echo -e "解压文件 ${package_file}"
-        tar -xzf ${package_file} -C /usr/local/
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}解压文件失败，可能是文件损坏${plain}"
-            rm -f ${package_file}
-            package_file=""
-        else
-            rm -f ${package_file}
-        fi
-    fi
-    
-    cd /usr/local/mx-ui || exit 1
-    
-    # 检查mx-ui可执行文件是否存在
-    if [[ ! -f "mx-ui" || ! -x "mx-ui" ]]; then
-        echo -e "${yellow}未找到可执行文件或文件不可执行，尝试编译${plain}"
-        # 安装Go环境
-        install_go
-        
-        # 编译mx-ui
-        compile_mx_ui
-    fi
-    
-    # 再次检查mx-ui可执行文件是否存在
-    if [[ ! -f "mx-ui" || ! -x "mx-ui" ]]; then
-        echo -e "${red}mx-ui 编译失败或文件不存在，安装失败${plain}"
-        echo -e "${yellow}请手动安装或联系作者解决${plain}"
-        exit 1
-    fi
-    
-    # 确保二进制文件可执行
-    chmod +x mx-ui 2>/dev/null
-    chmod +x bin/xray-linux-${arch} 2>/dev/null
-    
-    # 设置服务
-    setup_service
-    
-    # 配置服务
-    config_after_install
-
-    # 启动服务
+    # 重新加载服务
     systemctl daemon-reload
     systemctl enable mx-ui
     systemctl start mx-ui
     
-    echo -e "${green}mx-ui v${last_version}${plain} 安装完成，面板已启动"
-    echo -e ""
-    echo -e "mx-ui 管理脚本使用方法: "
-    echo -e "------------------------------------------"
-    echo -e "mx-ui              - 显示管理菜单"
-    echo -e "mx-ui start        - 启动 mx-ui 面板"
-    echo -e "mx-ui stop         - 停止 mx-ui 面板"
-    echo -e "mx-ui restart      - 重启 mx-ui 面板"
-    echo -e "mx-ui status       - 查看 mx-ui 状态"
-    echo -e "mx-ui enable       - 设置 mx-ui 开机自启"
-    echo -e "mx-ui disable      - 取消 mx-ui 开机自启"
-    echo -e "mx-ui log          - 查看 mx-ui 日志"
-    echo -e "mx-ui setting      - 查看/修改 mx-ui 配置"
-    echo -e "mx-ui update       - 更新 mx-ui 面板"
-    echo -e "mx-ui install      - 安装 mx-ui 面板"
-    echo -e "mx-ui uninstall    - 卸载 mx-ui 面板"
-    echo -e "------------------------------------------"
+    # 等待服务启动
+    sleep 2
+    
+    # 检查服务状态
+    if systemctl is-active --quiet mx-ui; then
+        echo -e "${GREEN}mx-ui 服务启动成功${PLAIN}"
+    else
+        echo -e "${YELLOW}mx-ui 服务启动失败，请检查日志：journalctl -u mx-ui${PLAIN}"
+    fi
+    
+    echo -e "${GREEN}mx-ui 安装成功！${PLAIN}"
+    echo -e "访问地址: ${GREEN}http://$(curl -s ifconfig.me):54321${PLAIN}"
+    echo -e "默认用户名: ${GREEN}admin${PLAIN}"
+    echo -e "默认密码: ${GREEN}admin${PLAIN}"
+    
+    return 0
 }
 
-echo -e "${green}开始安装${plain}"
-check_system
-check_arch
-check_os_version
-install_base
-install_mx_ui $1 
+# 卸载mx-ui
+uninstall_mxui() {
+    echo -e "${YELLOW}即将卸载mx-ui...${PLAIN}"
+    
+    # 停止并禁用服务
+    systemctl stop mx-ui
+    systemctl disable mx-ui
+    
+    # 删除服务文件
+    rm -f /etc/systemd/system/mx-ui.service
+    systemctl daemon-reload
+    
+    # 询问是否保留数据
+    read -p "是否保留配置数据？[y/n]: " keep_data
+    if [[ "${keep_data,,}" == "n" ]]; then
+        rm -rf /etc/mx-ui
+        rm -rf /var/log/mx-ui
+        echo -e "${GREEN}配置数据已删除${PLAIN}"
+    else
+        echo -e "${GREEN}配置数据已保留${PLAIN}"
+    fi
+    
+    # 删除安装文件
+    rm -rf /usr/local/mx-ui
+    
+    echo -e "${GREEN}mx-ui 卸载完成${PLAIN}"
+}
+
+# 更新mx-ui
+update_mxui() {
+    echo -e "${GREEN}开始更新mx-ui...${PLAIN}"
+    
+    # 备份配置
+    if [ -d "/etc/mx-ui" ]; then
+        cp -r /etc/mx-ui /etc/mx-ui.bak
+        echo -e "${GREEN}配置已备份到 /etc/mx-ui.bak${PLAIN}"
+    fi
+    
+    # 停止服务
+    systemctl stop mx-ui
+    
+    # 下载新版本或编译
+    if ! download_mxui; then
+        compile_mxui
+    fi
+    
+    # 启动服务
+    systemctl start mx-ui
+    
+    echo -e "${GREEN}mx-ui 更新完成${PLAIN}"
+}
+
+# 查看状态
+show_status() {
+    echo -e "${GREEN}mx-ui 状态信息:${PLAIN}"
+    
+    # 检查服务状态
+    systemctl status mx-ui --no-pager
+    
+    # 获取端口信息
+    if command -v netstat >/dev/null 2>&1; then
+        echo -e "${GREEN}端口监听信息:${PLAIN}"
+        netstat -tlnp | grep mx-ui
+    elif command -v ss >/dev/null 2>&1; then
+        echo -e "${GREEN}端口监听信息:${PLAIN}"
+        ss -tlnp | grep mx-ui
+    fi
+    
+    # 获取进程信息
+    echo -e "${GREEN}进程信息:${PLAIN}"
+    ps -ef | grep -v grep | grep mx-ui
+}
+
+# 显示帮助信息
+show_help() {
+    echo -e "
+    ${GREEN}MX-UI 管理脚本${PLAIN}
+    
+    使用方法: $0 [选项]
+    
+    ${GREEN}选项:${PLAIN}
+      ${YELLOW}install${PLAIN}    安装 MX-UI
+      ${YELLOW}uninstall${PLAIN}  卸载 MX-UI
+      ${YELLOW}update${PLAIN}     更新 MX-UI
+      ${YELLOW}status${PLAIN}     查看 MX-UI 状态
+      ${YELLOW}help${PLAIN}       显示此帮助信息
+    "
+}
+
+# 主函数
+main() {
+    check_root
+    
+    # 处理命令行参数
+    case "$1" in
+        install)
+            echo -e "${GREEN}开始安装 MX-UI...${PLAIN}"
+            check_os
+            check_arch
+            install_dependencies
+            install_go
+            if ! download_mxui; then
+                compile_mxui
+            fi
+            ;;
+        uninstall)
+            uninstall_mxui
+            ;;
+        update)
+            check_os
+            check_arch
+            install_go
+            update_mxui
+            ;;
+        status)
+            show_status
+            ;;
+        help|*)
+            show_help
+            ;;
+    esac
+}
+
+# 如果没有参数，默认显示帮助并询问安装
+if [ $# -eq 0 ]; then
+    show_help
+    read -p "是否现在安装 MX-UI? [y/n]: " install_now
+    if [[ "${install_now,,}" == "y" ]]; then
+        main install
+    fi
+else
+    main "$@"
+fi 

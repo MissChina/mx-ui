@@ -1,14 +1,15 @@
 package database
 
 import (
-	"mx-ui/config"
-	"mx-ui/logger"
+	"context"
 	"os"
 	"path/filepath"
+	"time"
+
+	"mx-ui/logger"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -22,13 +23,7 @@ func InitDB(dbPath string) error {
 	}
 
 	// 配置GORM日志
-	gormLogger := logger.New(
-		&DBWriter{},
-		logger.Config{
-			LogLevel: logger.Warn, // 日志级别
-			Colorful: false,       // 禁用彩色日志
-		},
-	)
+	gormLogger := &DBWriter{}
 
 	// 打开数据库
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
@@ -64,8 +59,40 @@ func InitDB(dbPath string) error {
 // DBWriter 实现GORM日志输出到自定义的日志系统
 type DBWriter struct{}
 
+// Printf 实现日志格式化输出
 func (w *DBWriter) Printf(format string, args ...interface{}) {
 	logger.Infof(format, args...)
+}
+
+// LogMode 实现gorm.Logger接口
+func (w *DBWriter) LogMode(level gorm.LogLevel) gorm.Logger {
+	return w
+}
+
+// Info 实现gorm.Logger接口
+func (w *DBWriter) Info(ctx context.Context, msg string, data ...interface{}) {
+	logger.Infof(msg, data...)
+}
+
+// Warn 实现gorm.Logger接口
+func (w *DBWriter) Warn(ctx context.Context, msg string, data ...interface{}) {
+	logger.Warningf(msg, data...)
+}
+
+// Error 实现gorm.Logger接口
+func (w *DBWriter) Error(ctx context.Context, msg string, data ...interface{}) {
+	logger.Errorf(msg, data...)
+}
+
+// Trace 实现gorm.Logger接口
+func (w *DBWriter) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+	elapsed := time.Since(begin)
+	sql, rows := fc()
+	if err != nil {
+		logger.Errorf("%s [%v], rows: %v, %s", sql, elapsed, rows, err.Error())
+		return
+	}
+	logger.Debugf("%s [%v], rows: %v", sql, elapsed, rows)
 }
 
 // AutoMigrate 自动迁移数据库表结构

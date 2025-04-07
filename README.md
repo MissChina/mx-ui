@@ -1,105 +1,119 @@
-# MX-UI 面板
+# MX-UI
 
-MX-UI 是一个基于 Xray 核心的 Web 管理面板，提供直观、简单易用的图形界面，帮助用户更便捷地配置和管理 Xray 服务。本项目参考了 [vaxilu/x-ui](https://github.com/vaxilu/x-ui) 和 [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) 项目，使用 [XTLS/Xray-core](https://github.com/XTLS/Xray-core) 作为核心。
+MX-UI 是一个基于Web的XRay面板，用于管理XRay服务器。它提供了直观的用户界面，让您可以轻松管理XRay配置、监控系统状态和流量统计。
 
-## 功能特点
+## 主要功能
 
-- 支持面板用户管理
-- 支持多种协议配置
-- 支持流量统计和限制
-- 支持自定义配置模板
-- 支持多用户多协议配置
-- 支持订阅链接生成
-- 支持多种系统架构
-- 支持中文界面
+- 系统状态监控（CPU、内存、磁盘、网络等）
+- XRay 版本管理与切换
+- 入站连接管理
+- 客户端配置管理
+- 流量统计
+- 界面美观，支持响应式设计
 
-## 安装指南
+## 系统要求
 
-### 一键安装脚本
+- 操作系统：CentOS 7+、Ubuntu 18.04+、Debian 10+
+- 架构：x86_64 (amd64)、arm64
+- 内存：建议至少 1GB
+- 硬盘：建议至少 10GB 可用空间
+
+## 安装
+
+### 快速安装
 
 ```bash
-bash <(curl -Ls https://github.com/MissChina/mx-ui/raw/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/MissChina/mx-ui/main/install.sh)
 ```
 
 ### 手动安装
 
-1. 首先下载最新的程序包：
+如果您想手动控制安装过程，可以先下载脚本，然后按照需要执行：
 
 ```bash
-wget https://github.com/MissChina/mx-ui/releases/download/v1.0.0/mx-ui-linux-amd64.tar.gz
+wget -O mxui.sh https://raw.githubusercontent.com/MissChina/mx-ui/main/install.sh
+chmod +x mxui.sh
+
+# 安装
+./mxui.sh install
+
+# 卸载
+./mxui.sh uninstall
+
+# 更新
+./mxui.sh update
+
+# 查看状态
+./mxui.sh status
+
+# 查看帮助信息
+./mxui.sh help
 ```
 
-2. 解压程序包并进入目录：
+## 访问面板
 
+安装完成后，可以通过以下地址访问面板：
+
+```
+http://服务器IP:54321
+```
+
+默认用户名和密码：
+- 用户名：admin
+- 密码：admin
+
+**首次登录后请立即修改默认密码！**
+
+## 常见问题
+
+### 无法访问面板
+
+1. 检查服务状态：
 ```bash
-tar zxvf mx-ui-linux-amd64.tar.gz -C /usr/local/
-cd /usr/local/mx-ui/
+./mxui.sh status
 ```
 
-3. 赋予程序执行权限：
-
+2. 检查防火墙是否开放了54321端口：
 ```bash
-chmod +x mx-ui bin/xray-linux-amd64
+# CentOS
+firewall-cmd --zone=public --add-port=54321/tcp --permanent
+firewall-cmd --reload
+
+# Ubuntu/Debian
+ufw allow 54321/tcp
+ufw reload
 ```
 
-4. 安装服务：
-
+3. 检查日志文件：
 ```bash
-cp -f mx-ui.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable mx-ui
-systemctl start mx-ui
+journalctl -u mx-ui
+cat /var/log/mx-ui/access.log
+cat /var/log/mx-ui/error.log
 ```
 
-## 系统要求
+### 端口被占用
 
-- CentOS 7+
-- Ubuntu 16+
-- Debian 8+
-- 内存: 最低128MB
-- 存储: 最低10MB可用空间
-- 处理器: 支持64位指令集
+如果54321端口被占用，可以登录后在设置中更改Web端口。
 
-## 管理命令
+### 服务无法启动
 
-安装完成后，可以使用以下命令管理面板：
-
+检查日志以获取更多信息：
 ```bash
-mx-ui              # 显示管理菜单
-mx-ui start        # 启动面板
-mx-ui stop         # 停止面板
-mx-ui restart      # 重启面板
-mx-ui status       # 查看面板状态
-mx-ui enable       # 设置开机自启
-mx-ui disable      # 取消开机自启
-mx-ui log          # 查看面板日志
-mx-ui setting      # 查看/修改面板配置
-mx-ui update       # 更新面板
-mx-ui install      # 安装面板
-mx-ui uninstall    # 卸载面板
+journalctl -u mx-ui
 ```
 
-## 更新历史
+## 更新日志
 
-### v1.0.0 (2023-04-07)
-- 首次发布
-- 支持基本的面板功能
-- 支持用户管理和Xray配置
+### v1.0.0 (2025-04-07)
+- 初始版本发布
+- 提供XRay服务管理
+- 系统状态监控
+- 用户认证与管理
 
-## 许可协议
+## 贡献
 
-本项目使用 MIT 许可证，详情请参阅 [LICENSE](LICENSE) 文件。
+欢迎提交Issue和Pull Request来帮助改进MX-UI。在提交PR前，请确保您的代码符合项目的编码规范。
 
-## 贡献指南
+## 许可证
 
-欢迎提交问题报告和功能请求，如果您想要贡献代码，请先 Fork 本仓库并提交 Pull Request。
-
-## 致谢
-
-- [vaxilu/x-ui](https://github.com/vaxilu/x-ui)
-- [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui)
-- [XTLS/Xray-core](https://github.com/XTLS/Xray-core)
-
-## 联系方式
-
-GitHub: [https://github.com/MissChina](https://github.com/MissChina) 
+本项目基于MIT许可证。详情请参阅[LICENSE](LICENSE)文件。 

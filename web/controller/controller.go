@@ -336,24 +336,31 @@ type ServerController struct{}
 
 // GetStatus 获取服务器状态
 func (a *ServerController) GetStatus(c *gin.Context) {
+	serverService := service.ServerService{}
+	status := serverService.GetStatus(nil)
+	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"status": "running",
-		},
+		"obj": status,
 	})
 }
 
 // GetStats 获取服务器统计信息
 func (a *ServerController) GetStats(c *gin.Context) {
+	serverService := service.ServerService{}
+	stats, err := serverService.GetServerStats()
+	
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "获取服务器统计信息失败: " + err.Error(),
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"cpu":        0.0,
-			"mem":        0.0,
-			"networkIn":  0,
-			"networkOut": 0,
-		},
+		"obj": stats,
 	})
 }
 
