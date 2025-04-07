@@ -117,47 +117,54 @@ func registerRoutes(router *gin.Engine) {
 	api := router.Group(apiPrefix)
 	{
 		// 登录相关API
-		api.POST("/login", controller.LoginController{}.Login)
-		api.POST("/logout", authMiddleware, controller.LoginController{}.Logout)
+		loginController := &controller.LoginController{}
+		api.POST("/login", loginController.Login)
+		api.POST("/logout", authMiddleware, loginController.Logout)
 
 		// 需要验证的API
 		api.Use(authMiddleware)
 		{
 			// 用户相关API
-			api.GET("/user", controller.UserController{}.GetUser)
-			api.PUT("/user", controller.UserController{}.UpdateUser)
+			userController := &controller.UserController{}
+			api.GET("/user", userController.GetUser)
+			api.PUT("/user", userController.UpdateUser)
 
 			// 设置相关API
-			api.GET("/settings", controller.SettingController{}.GetSettings)
-			api.PUT("/settings", controller.SettingController{}.UpdateSettings)
+			settingController := &controller.SettingController{}
+			api.GET("/settings", settingController.GetSettings)
+			api.PUT("/settings", settingController.UpdateSettings)
 
 			// 入站相关API
+			inboundController := &controller.InboundController{}
 			inboundAPI := api.Group("/inbounds")
 			{
-				inboundAPI.GET("", controller.InboundController{}.GetInbounds)
-				inboundAPI.POST("", controller.InboundController{}.AddInbound)
-				inboundAPI.PUT("/:id", controller.InboundController{}.UpdateInbound)
-				inboundAPI.DELETE("/:id", controller.InboundController{}.DeleteInbound)
+				inboundAPI.GET("", inboundController.GetInbounds)
+				inboundAPI.POST("", inboundController.AddInbound)
+				inboundAPI.PUT("/:id", inboundController.UpdateInbound)
+				inboundAPI.DELETE("/:id", inboundController.DeleteInbound)
 			}
 
 			// 客户端相关API
+			clientController := &controller.ClientController{}
 			clientAPI := api.Group("/clients")
 			{
-				clientAPI.GET("", controller.ClientController{}.GetClients)
-				clientAPI.POST("", controller.ClientController{}.AddClient)
-				clientAPI.PUT("/:id", controller.ClientController{}.UpdateClient)
-				clientAPI.DELETE("/:id", controller.ClientController{}.DeleteClient)
+				clientAPI.GET("", clientController.GetClients)
+				clientAPI.POST("", clientController.AddClient)
+				clientAPI.PUT("/:id", clientController.UpdateClient)
+				clientAPI.DELETE("/:id", clientController.DeleteClient)
 			}
 
 			// 服务器状态API
-			api.GET("/server/status", controller.ServerController{}.GetStatus)
-			api.GET("/server/stats", controller.ServerController{}.GetStats)
+			serverController := &controller.ServerController{}
+			api.GET("/server/status", serverController.GetStatus)
+			api.GET("/server/stats", serverController.GetStats)
 
 			// Xray相关API
-			api.POST("/xray/restart", controller.XrayController{}.Restart)
-			api.POST("/xray/stop", controller.XrayController{}.Stop)
-			api.POST("/xray/start", controller.XrayController{}.Start)
-			api.GET("/xray/config", controller.XrayController{}.GetConfig)
+			xrayController := &controller.XrayController{}
+			api.POST("/xray/restart", xrayController.Restart)
+			api.POST("/xray/stop", xrayController.Stop)
+			api.POST("/xray/start", xrayController.Start)
+			api.GET("/xray/config", xrayController.GetConfig)
 		}
 	}
 

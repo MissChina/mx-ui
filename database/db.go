@@ -10,6 +10,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -65,7 +66,7 @@ func (w *DBWriter) Printf(format string, args ...interface{}) {
 }
 
 // LogMode 实现gorm.Logger接口
-func (w *DBWriter) LogMode(level gorm.LogLevel) gorm.Logger {
+func (w *DBWriter) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	return w
 }
 

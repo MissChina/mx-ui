@@ -3,7 +3,6 @@ package service
 import (
 	"mx-ui/database"
 	"mx-ui/logger"
-	"runtime"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -21,6 +20,16 @@ const (
 	Running ProcessState = "running"
 	Stop    ProcessState = "stop"
 	Error   ProcessState = "error"
+)
+
+// 定义网络连接类型常量
+const (
+	TCP  uint32 = 1
+	TCP4 uint32 = 2
+	TCP6 uint32 = 3
+	UDP  uint32 = 4
+	UDP4 uint32 = 5
+	UDP6 uint32 = 6
 )
 
 // Status 系统状态结构体
@@ -174,9 +183,9 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 		udpCount := 0
 		for _, conn := range connections {
 			switch conn.Type {
-			case "tcp", "tcp4", "tcp6":
+			case TCP, TCP4, TCP6:
 				tcpCount++
-			case "udp", "udp4", "udp6":
+			case UDP, UDP4, UDP6:
 				udpCount++
 			}
 		}
