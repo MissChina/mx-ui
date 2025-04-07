@@ -103,7 +103,7 @@ install_go() {
 # 下载预编译的mx-ui二进制文件
 download_mxui() {
     echo -e "${GREEN}开始下载预编译的mx-ui版本${PLAIN}"
-    MX_UI_VERSION="v1.0.0"
+    MX_UI_VERSION="v1.0.1"
     MX_UI_FILE="mx-ui-linux-${ARCH}.tar.gz"
     
     echo -e "从 https://github.com/MissChina/mx-ui/releases/download/${MX_UI_VERSION}/${MX_UI_FILE} 下载 mx-ui"
