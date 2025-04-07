@@ -86,7 +86,7 @@ func rotateLogDaily(logPath string) {
 		}
 
 		// 重新初始化日志器
-		level, _ := logging.GetLevel("")
+		level := logging.GetLevel("")
 		InitLogger(level)
 	}
 }
