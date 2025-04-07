@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"mx-ui/logger"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -25,14 +23,9 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
-	// 配置GORM
-	config := &gorm.Config{
-		Logger: &DBWriter{},
-	}
-
 	// 打开数据库
 	var err error
-	db, err = gorm.Open(sqlite.Open(dbPath), config)
+	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		return err
 	}
@@ -58,45 +51,6 @@ func InitDB(dbPath string) error {
 	initUser()
 
 	return nil
-}
-
-// DBWriter 实现GORM日志输出到自定义的日志系统
-type DBWriter struct{}
-
-// Printf 实现日志格式化输出
-func (w *DBWriter) Printf(format string, args ...interface{}) {
-	logger.Infof(format, args...)
-}
-
-// LogMode 实现gorm.Logger接口
-func (w *DBWriter) LogMode(level gorm.LogLevel) gorm.Logger {
-	return w
-}
-
-// Info 实现gorm.Logger接口
-func (w *DBWriter) Info(ctx context.Context, msg string, data ...interface{}) {
-	logger.Infof(msg, data...)
-}
-
-// Warn 实现gorm.Logger接口
-func (w *DBWriter) Warn(ctx context.Context, msg string, data ...interface{}) {
-	logger.Warningf(msg, data...)
-}
-
-// Error 实现gorm.Logger接口
-func (w *DBWriter) Error(ctx context.Context, msg string, data ...interface{}) {
-	logger.Errorf(msg, data...)
-}
-
-// Trace 实现gorm.Logger接口
-func (w *DBWriter) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
-	elapsed := time.Since(begin)
-	sql, rows := fc()
-	if err != nil {
-		logger.Errorf("%s [%v], rows: %v, %s", sql, elapsed, rows, err.Error())
-		return
-	}
-	logger.Debugf("%s [%v], rows: %v", sql, elapsed, rows)
 }
 
 // initModels 初始化数据库表结构
@@ -175,6 +129,7 @@ type ServerStat struct {
 	NetworkOut int64
 }
 
+// IsNotFound 检查是否是记录未找到错误
 func IsNotFound(err error) bool {
 	return err == gorm.ErrRecordNotFound
 }
