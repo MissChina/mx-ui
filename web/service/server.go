@@ -208,9 +208,5 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 		}
 	}
 
-	// 更新最后一次状态
-	s.lastStatus = status
-	s.lastGetStatusTime = now
-	
 	return status
 } 
