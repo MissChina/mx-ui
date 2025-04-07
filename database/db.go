@@ -8,9 +8,9 @@ import (
 
 	"mx-ui/logger"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
+	"gorm.io/driver/sqlite"
 )
 
 var DB *gorm.DB
