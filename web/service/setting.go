@@ -126,13 +126,13 @@ func (s *SettingService) SetXrayConfigTemplate(template string) error {
 
 // ResetSettings 重置所有设置
 func (s *SettingService) ResetSettings() error {
-	return database.DB.Where("1 = 1").Delete(&database.Setting{}).Error
+	return database.GetDB().Where("1 = 1").Delete(&database.Setting{}).Error
 }
 
 // getSetting 获取设置值
 func (s *SettingService) getSetting(key string, value *string) error {
 	setting := &database.Setting{}
-	err := database.DB.Where("key = ?", key).First(setting).Error
+	err := database.GetDB().Where("key = ?", key).First(setting).Error
 	if err != nil {
 		return err
 	}
@@ -143,15 +143,15 @@ func (s *SettingService) getSetting(key string, value *string) error {
 // saveSetting 保存设置值
 func (s *SettingService) saveSetting(key string, value string) error {
 	setting := &database.Setting{}
-	err := database.DB.Where("key = ?", key).First(setting).Error
+	err := database.GetDB().Where("key = ?", key).First(setting).Error
 	if err != nil {
 		logger.Warning("设置", key, "不存在，将创建它")
 		setting = &database.Setting{
 			Key:   key,
 			Value: value,
 		}
-		return database.DB.Create(setting).Error
+		return database.GetDB().Create(setting).Error
 	}
 	setting.Value = value
-	return database.DB.Save(setting).Error
+	return database.GetDB().Save(setting).Error
 } 

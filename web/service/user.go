@@ -11,7 +11,7 @@ type UserService struct{}
 // GetFirstUser 获取第一个（管理员）用户
 func (s *UserService) GetFirstUser() (*database.User, error) {
 	user := &database.User{}
-	err := database.DB.First(user).Error
+	err := database.GetDB().First(user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +21,7 @@ func (s *UserService) GetFirstUser() (*database.User, error) {
 // CheckLogin 检查用户登录
 func (s *UserService) CheckLogin(username string, password string) (*database.User, error) {
 	user := &database.User{}
-	err := database.DB.Where("username = ? AND password = ?", username, password).First(user).Error
+	err := database.GetDB().Where("username = ? AND password = ?", username, password).First(user).Error
 	if err != nil {
 		return nil, errors.New("用户名或密码错误")
 	}
@@ -42,13 +42,13 @@ func (s *UserService) UpdateFirstUser(username string, password string) error {
 		user.Password = password
 	}
 
-	return database.DB.Save(user).Error
+	return database.GetDB().Save(user).Error
 }
 
 // GetUserCount 获取用户数量
 func (s *UserService) GetUserCount() (int64, error) {
 	var count int64
-	err := database.DB.Model(&database.User{}).Count(&count).Error
+	err := database.GetDB().Model(&database.User{}).Count(&count).Error
 	if err != nil {
 		return 0, err
 	}

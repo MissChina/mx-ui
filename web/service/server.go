@@ -79,7 +79,7 @@ func (s *ServerService) GetServerStats() (*database.ServerStat, error) {
 	
 	// 查询最新的统计数据
 	var serverStat database.ServerStat
-	err := database.DB.Order("created_at DESC").First(&serverStat).Error
+	err := database.GetDB().Order("created_at DESC").First(&serverStat).Error
 	if err != nil {
 		// 如果没有数据，创建新的统计数据
 		serverStat = database.ServerStat{
@@ -89,7 +89,7 @@ func (s *ServerService) GetServerStats() (*database.ServerStat, error) {
 			NetworkIn:  int64(status.NetTraffic.Recv),
 			NetworkOut: int64(status.NetTraffic.Sent),
 		}
-		database.DB.Create(&serverStat)
+		database.GetDB().Create(&serverStat)
 	}
 	
 	return &serverStat, nil
