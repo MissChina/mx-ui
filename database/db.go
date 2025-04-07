@@ -1,10 +1,8 @@
 package database
 
 import (
-	"context"
 	"os"
 	"path/filepath"
-	"time"
 
 	"mx-ui/logger"
 
@@ -13,11 +11,6 @@ import (
 )
 
 var db *gorm.DB
-
-const (
-	defaultUsername = "admin"
-	defaultPassword = "admin"
-)
 
 // GetDB 获取数据库连接
 func GetDB() *gorm.DB {
@@ -32,11 +25,14 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	// 配置GORM
+	config := &gorm.Config{
+		Logger: &DBWriter{},
+	}
+
 	// 打开数据库
 	var err error
-	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: &DBWriter{},
-	})
+	db, err = gorm.Open(sqlite.Open(dbPath), config)
 	if err != nil {
 		return err
 	}
@@ -50,7 +46,7 @@ func InitDB(dbPath string) error {
 	// 设置连接池参数
 	sqlDB.SetMaxOpenConns(1) // SQLite只支持单连接
 	sqlDB.SetMaxIdleConns(1)
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxLifetime(0)
 
 	// 自动迁移数据库表结构
 	err = initModels()
