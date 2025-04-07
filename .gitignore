@@ -20,7 +20,7 @@ temp/
 *~
 
 # 构建目录
-/release/
+/release/*.tar.gz
 /dist/
 /bin/
 /build/
