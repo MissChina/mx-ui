@@ -1,0 +1,47 @@
+# 二进制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+mx-ui
+
+# 临时文件
+*.test
+*.out
+*.log
+temp/
+
+# 编辑器文件和目录
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 构建目录
+/release/
+/dist/
+/bin/
+/build/
+
+# 依赖目录
+/vendor/
+/node_modules/
+
+# 数据库文件
+*.db
+*.db-journal
+
+# 证书文件
+*.pem
+*.cert
+*.key
+
+# 配置文件
+config.json
+settings.json
+
+# 系统文件
+.DS_Store
+Thumbs.db 

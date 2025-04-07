@@ -1,0 +1,15 @@
+[Unit]
+Description=mx-ui Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/mx-ui/
+ExecStart=/usr/local/mx-ui/mx-ui
+Restart=on-failure
+RestartSec=10
+RestartPreventExitStatus=23
+
+[Install]
+WantedBy=multi-user.target 

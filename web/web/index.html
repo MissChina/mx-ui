@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MX-UI 管理面板</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1e88e5;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+        }
+        .user-info {
+            margin-right: 20px;
+        }
+        .sidebar {
+            width: 200px;
+            background-color: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-right: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        .main-content {
+            flex-grow: 1;
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .content-wrapper {
+            display: flex;
+            margin-top: 20px;
+        }
+        .nav-item {
+            margin: 10px 0;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .nav-item:hover, .nav-item.active {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+        .nav-item i {
+            margin-right: 10px;
+        }
+        .status-card {
+            background-color: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .card-title {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            color: #1565c0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background-color: #1e88e5;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #e53935;
+            color: white;
+        }
+        .inbound-list {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .inbound-list th, .inbound-list td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .inbound-list tr:hover {
+            background-color: #f5f5f5;
+        }
+        .logout-btn {
+            background-color: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #add-inbound {
+            margin-bottom: 15px;
+        }
+        #tab-content > div {
+            display: none;
+        }
+        #tab-content > div.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MX-UI 管理面板</h1>
+            <div class="header-right">
+                <div class="user-info">
+                    欢迎 <span id="username">管理员</span>
+                </div>
+                <button class="logout-btn" id="logout-btn">退出登录</button>
+            </div>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="sidebar">
+                <div class="nav-item active" data-tab="inbounds">
+                    <i>📊</i> 入站管理
+                </div>
+                <div class="nav-item" data-tab="clients">
+                    <i>👥</i> 客户端管理
+                </div>
+                <div class="nav-item" data-tab="settings">
+                    <i>⚙️</i> 面板设置
+                </div>
+                <div class="nav-item" data-tab="system">
+                    <i>💻</i> 系统状态
+                </div>
+                <div class="nav-item" data-tab="xray">
+                    <i>🚀</i> Xray 管理
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div id="tab-content">
+                    <!-- 入站管理 -->
+                    <div class="tab-pane active" id="inbounds">
+                        <h2 class="card-title">入站管理</h2>
+                        <button id="add-inbound" class="btn btn-primary">添加入站</button>
+                        <table class="inbound-list">
+                            <thead>
+                                <tr>
+                                    <th>备注</th>
+                                    <th>协议</th>
+                                    <th>端口</th>
+                                    <th>状态</th>
+                                    <th>流量</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>示例入站</td>
+                                    <td>VMess</td>
+                                    <td>10086</td>
+                                    <td>运行中</td>
+                                    <td>0.00 GB</td>
+                                    <td>
+                                        <button class="btn btn-primary">编辑</button>
+                                        <button class="btn btn-danger">删除</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 客户端管理 -->
+                    <div class="tab-pane" id="clients">
+                        <h2 class="card-title">客户端管理</h2>
+                        <p>此处将显示客户端管理界面</p>
+                    </div>
+                    
+                    <!-- 面板设置 -->
+                    <div class="tab-pane" id="settings">
+                        <h2 class="card-title">面板设置</h2>
+                        <div class="card">
+                            <h3>用户设置</h3>
+                            <div class="form-group">
+                                <label for="username-input">用户名</label>
+                                <input type="text" id="username-input" class="form-control" value="admin">
+                            </div>
+                            <div class="form-group">
+                                <label for="password-input">密码</label>
+                                <input type="password" id="password-input" class="form-control" value="******">
+                            </div>
+                            <button class="btn btn-primary">保存设置</button>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>面板设置</h3>
+                            <div class="form-group">
+                                <label for="port-input">面板端口</label>
+                                <input type="number" id="port-input" class="form-control" value="54321">
+                            </div>
+                            <div class="form-group">
+                                <label for="base-path">基础路径</label>
+                                <input type="text" id="base-path" class="form-control" value="/">
+                            </div>
+                            <button class="btn btn-primary">保存设置</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 系统状态 -->
+                    <div class="tab-pane" id="system">
+                        <h2 class="card-title">系统状态</h2>
+                        <div class="status-card">
+                            <h3>服务状态: 正常运行中</h3>
+                            <p>上线时间: 3 天 2 小时 15 分钟</p>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>系统资源</h3>
+                            <p>CPU 使用率: 5%</p>
+                            <p>内存使用率: 25%</p>
+                            <p>磁盘使用率: 30%</p>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>网络状态</h3>
+                            <p>入站流量: 1.25 GB</p>
+                            <p>出站流量: 5.67 GB</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Xray 管理 -->
+                    <div class="tab-pane" id="xray">
+                        <h2 class="card-title">Xray 管理</h2>
+                        <div class="card">
+                            <h3>Xray 控制</h3>
+                            <button class="btn btn-primary">重启 Xray</button>
+                            <button class="btn btn-danger">停止 Xray</button>
+                            <button class="btn btn-primary">启动 Xray</button>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>Xray 配置</h3>
+                            <div class="form-group">
+                                <label for="xray-config">配置模板</label>
+                                <textarea id="xray-config" class="form-control" rows="10">
+{
+    "log": {
+        "loglevel": "warning",
+        "access": "./access.log",
+        "error": "./error.log"
+    },
+    "inbounds": [],
+    "outbounds": [
+        {
+            "protocol": "freedom"
+        }
+    ]
+}</textarea>
+                            </div>
+                            <button class="btn btn-primary">应用配置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 标签页切换
+            const navItems = document.querySelectorAll('.nav-item');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // 移除所有活动类
+                    navItems.forEach(i => i.classList.remove('active'));
+                    tabPanes.forEach(p => p.classList.remove('active'));
+                    
+                    // 添加当前活动类
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // 登出事件
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                if (confirm('确定要退出登录吗？')) {
+                    alert('您已退出登录');
+                    // 在实际应用中，这里应当调用API进行退出操作
+                    // window.location.href = '/login';
+                }
+            });
+            
+            // 添加入站事件
+            document.getElementById('add-inbound').addEventListener('click', function() {
+                alert('添加入站功能将在完整版本中实现');
+            });
+        });
+    </script>
+</body>
+</html> 
