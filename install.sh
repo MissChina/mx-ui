@@ -6,6 +6,9 @@ yellow='\033[0;33m'
 blue='\033[0;34m'
 plain='\033[0m'
 
+# 当前脚本版本号
+current_version="1.0.0"
+
 # 检查系统
 check_system() {
     if [[ -f /etc/redhat-release ]]; then
@@ -38,8 +41,7 @@ check_arch() {
     elif [[ $arch == "s390x" ]]; then
         arch="s390x"
     else
-        arch="amd64"
-        echo -e "${red}检测架构失败，使用默认架构: ${arch}${plain}"
+        echo -e "${red}检测架构失败 $arch ${plain}" && exit 1
     fi
     echo "系统架构: ${arch}"
 }
@@ -75,6 +77,86 @@ install_base() {
     else
         apt-get update && apt-get install wget curl tar -y
     fi
+}
+
+# 安装Go环境
+install_go() {
+    echo -e "${green}正在安装Go环境...${plain}"
+    
+    # 检查是否已安装Go
+    if command -v go &>/dev/null; then
+        echo -e "${green}Go已安装，跳过安装步骤${plain}"
+        return
+    fi
+    
+    # 下载并安装Go
+    if [[ $arch == "amd64" ]]; then
+        wget -O /tmp/go.tar.gz https://golang.org/dl/go1.21.0.linux-amd64.tar.gz
+    elif [[ $arch == "arm64" ]]; then
+        wget -O /tmp/go.tar.gz https://golang.org/dl/go1.21.0.linux-arm64.tar.gz
+    else
+        wget -O /tmp/go.tar.gz https://golang.org/dl/go1.21.0.linux-amd64.tar.gz
+    fi
+    
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}下载Go失败，尝试使用备用链接${plain}"
+        if [[ $arch == "amd64" ]]; then
+            wget -O /tmp/go.tar.gz https://gomirrors.org/dl/go/go1.21.0.linux-amd64.tar.gz
+        elif [[ $arch == "arm64" ]]; then
+            wget -O /tmp/go.tar.gz https://gomirrors.org/dl/go/go1.21.0.linux-arm64.tar.gz
+        else
+            wget -O /tmp/go.tar.gz https://gomirrors.org/dl/go/go1.21.0.linux-amd64.tar.gz
+        fi
+        
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}下载Go失败，请手动安装Go环境后重试${plain}"
+            return 1
+        fi
+    fi
+    
+    tar -C /usr/local -xzf /tmp/go.tar.gz
+    rm -f /tmp/go.tar.gz
+    
+    # 配置环境变量
+    echo 'export PATH=$PATH:/usr/local/go/bin' > /etc/profile.d/go.sh
+    source /etc/profile.d/go.sh
+    
+    echo -e "${green}Go安装完成${plain}"
+    go version
+}
+
+# 编译mx-ui
+compile_mx_ui() {
+    echo -e "${green}正在编译mx-ui...${plain}"
+    
+    # 创建临时目录
+    TEMP_DIR=$(mktemp -d)
+    
+    # 复制源码到临时目录
+    cp -r /usr/local/mx-ui/* $TEMP_DIR/
+    
+    # 进入临时目录编译
+    cd $TEMP_DIR
+    
+    # 编译
+    export GO111MODULE=on
+    export GOPROXY=https://goproxy.cn,direct
+    go build -o mx-ui main.go
+    
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}编译mx-ui失败${plain}"
+        return 1
+    fi
+    
+    # 复制编译好的二进制文件
+    cp mx-ui /usr/local/mx-ui/
+    chmod +x /usr/local/mx-ui/mx-ui
+    
+    # 清理临时目录
+    cd /usr/local
+    rm -rf $TEMP_DIR
+    
+    echo -e "${green}mx-ui编译完成${plain}"
 }
 
 # 安装后配置
@@ -137,7 +219,37 @@ install_mx_ui() {
     tar zxvf mx-ui-linux-${arch}.tar.gz -C /usr/local/
     rm mx-ui-linux-${arch}.tar.gz -f
     cd /usr/local/mx-ui
-    chmod +x mx-ui bin/xray-linux-${arch}
+    
+    # 检查mx-ui可执行文件是否存在
+    if [[ ! -f "mx-ui" || ! -x "mx-ui" ]]; then
+        echo -e "${yellow}未找到可执行文件或文件不可执行，尝试编译${plain}"
+        # 安装Go环境
+        install_go
+        # 从GitHub克隆完整源码
+        echo -e "${green}从GitHub下载源码...${plain}"
+        TMP_DIR=$(mktemp -d)
+        git clone https://github.com/MissChina/mx-ui.git $TMP_DIR
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}下载源码失败${plain}"
+            # 尝试编译已有的文件
+            compile_mx_ui
+        else
+            # 复制源码
+            cp -r $TMP_DIR/* /usr/local/mx-ui/
+            # 保留xray二进制文件
+            mv /usr/local/mx-ui/bin/xray-linux-${arch} /tmp/xray-backup
+            rm -rf /usr/local/mx-ui/bin
+            mkdir -p /usr/local/mx-ui/bin
+            mv /tmp/xray-backup /usr/local/mx-ui/bin/xray-linux-${arch}
+            # 编译
+            compile_mx_ui
+            # 清理临时目录
+            rm -rf $TMP_DIR
+        fi
+    fi
+    
+    # 确保二进制文件可执行
+    chmod +x mx-ui bin/xray-linux-${arch} 2>/dev/null
     cp -f mx-ui.service /etc/systemd/system/
     
     # 创建软链接
